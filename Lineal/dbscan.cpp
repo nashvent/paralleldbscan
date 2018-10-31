@@ -6,14 +6,17 @@ typedef vector<float> fvector;
 
 
 struct Punto{
-    bool visited,noise,hasCluster;
+    bool visited,noise,hasCluster,query;
     int index;
     vector<float>data;
+    vector<Punto*>queryStore;
+    
     Punto(fvector n_data,int n_index=-1){
         data=n_data;
         visited=false;
         noise=false;
         hasCluster=false;
+        query=false;
         index=n_index;
     }
     void print(){
@@ -58,13 +61,20 @@ float distEuclidiana(fvector a,fvector b){
     return sqrt(dist);
 }
 
+float tiempoExpand=0;
+int cantQuery=0;
 PLista query(Punto* p,PLista X, float eps){
+    cantQuery++;
+    if(p->query)
+        return p->queryStore;
     PLista qList;
-    for(int x=0;x<X.size();x++){
-        if(distEuclidiana(p->data,X[x]->data)<eps){
-            qList.push_back(X[x]);
+    for(PLista::iterator it = X.begin(); it != X.end(); ++it){
+        if(distEuclidiana(p->data,(*it)->data)<eps){
+            qList.push_back(*it);
         }
     }
+    p->query=true;
+    p->queryStore=qList;
     return qList;
 }
 bool ordenar (Punto* i, Punto* j) {
@@ -73,7 +83,6 @@ bool ordenar (Punto* i, Punto* j) {
         return false;
   }
   return true;
-  //return (i->data[0]==j->data[0] and i->data[1]==j->data[1]);
 }
 
 
@@ -82,6 +91,8 @@ void expand(Punto* p,PLista Np,PLista X, Cluster* C,float eps,int minpts){
     C->addPunto(p);
     for(int x=0;x<Np.size();x++){
         Punto *o=Np[x];
+        if(o->noise)
+            o->noise=false;
         if(!o->visited){
             o->visited=true;
             PLista No=query(o,X,eps);
@@ -92,14 +103,18 @@ void expand(Punto* p,PLista Np,PLista X, Cluster* C,float eps,int minpts){
         }
         if(!o->hasCluster)
             C->addPunto(o);
+        
     }
+    return;
 }
 
 CLista DBSCAN(PLista X,float eps,int minpts){
     CLista clusters;
+    int iter=0;
     for(int xi=0;xi<X.size();xi++){
         Punto *p=X[xi];
         if(!p->visited){
+            iter++;
             p->visited=true;
             PLista Np=query(p,X,eps);
             if(Np.size()<minpts){
@@ -112,6 +127,7 @@ CLista DBSCAN(PLista X,float eps,int minpts){
             }
         }
     }
+    cout<<"Iter"<<iter<<endl;
     return clusters;
 }
 
@@ -151,7 +167,7 @@ int main(int argc, char** argv){
             noisePuntos++;
         }
     }
-    
+    cout<<"Cant query "<<cantQuery<<endl;
     
     std::cout << "\t" << 2 << "\tDimension " << std::endl;
     std::cout << "\t" << puntos.size() << "\tPuntos " << std::endl;
